@@ -409,6 +409,22 @@ a {
 }
 
 /* Download page */
+.download-bg-img {
+    position: fixed;
+    right: 2.5%;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 72%;
+    width: auto;
+    object-fit: cover;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.download-page .container {
+    position: relative;
+    z-index: 1;
+}
 .download-page {
     display: flex;
     align-items: center;
