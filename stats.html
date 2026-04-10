@@ -114,13 +114,13 @@
         // fill:true only on est_online — it's the primary absolute metric.
         // Match columns and app_starts are deltas/event counts — shown as lines only.
         const HISTORY_SERIES = [
-            { key: 'est_online',            label: 'Players Online',    color: '#f52716', width: 2,   fill: true  },
-            { key: 'app_starts',            label: 'App Starts',        color: '#ffffff', width: 1.5, fill: false },
-            { key: 'match_wave',            label: 'Grinder',           color: '#ff8c00', width: 1.5, fill: false },
-            { key: 'match_wave_coop',       label: 'Grinder Co-op',     color: '#ffd700', width: 1.5, fill: false },
-            { key: 'match_deathmatch',      label: 'Deathmatch',        color: '#42a5f5', width: 1.5, fill: false },
-            { key: 'match_team_deathmatch', label: 'Team Deathmatch',   color: '#ab47bc', width: 1.5, fill: false },
-            { key: 'match_other',           label: 'Other',             color: '#78909c', width: 1,   fill: false },
+            { key: 'est_online',            label: 'Players Online',    color: '#f52716', width: 2,   fill: true,  agg: 'last' },
+            { key: 'app_starts',            label: 'App Starts',        color: '#ffffff', width: 1.5, fill: false, agg: 'sum'  },
+            { key: 'match_wave',            label: 'Grinder',           color: '#ff8c00', width: 1.5, fill: false, agg: 'sum'  },
+            { key: 'match_wave_coop',       label: 'Grinder Co-op',     color: '#ffd700', width: 1.5, fill: false, agg: 'sum'  },
+            { key: 'match_deathmatch',      label: 'Deathmatch',        color: '#42a5f5', width: 1.5, fill: false, agg: 'sum'  },
+            { key: 'match_team_deathmatch', label: 'Team Deathmatch',   color: '#ab47bc', width: 1.5, fill: false, agg: 'sum'  },
+            { key: 'match_other',           label: 'Other',             color: '#78909c', width: 1,   fill: false, agg: 'sum'  },
         ];
 
         async function renderHistoryChart() {
@@ -135,19 +135,25 @@
                 // Deduplicate by minute per series — keep last reading per minute.
                 // Multiple rows at the same minute are rapid successive events;
                 // the final value represents the state at the end of that minute.
-                const GAP_MS = 15 * 60 * 1000;
+                const BUCKET_MS = 10 * 60 * 1000;
+                const GAP_MS    = 20 * 60 * 1000; // gap threshold: 2 buckets of silence
 
-                function buildPoints(key) {
-                    const byMinute = new Map();
+                function buildPoints(key, agg) {
+                    const buckets = new Map();
                     for (const row of data) {
-                        const ms = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / 60000) * 60000;
-                        byMinute.set(ms, parseInt(row[col[key]], 10));
+                        const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / BUCKET_MS) * BUCKET_MS;
+                        const val = parseInt(row[col[key]], 10);
+                        if (agg === 'sum') {
+                            buckets.set(ms, (buckets.get(ms) ?? 0) + val);
+                        } else {
+                            buckets.set(ms, val); // 'last': each row overwrites, final row wins
+                        }
                     }
-                    const sorted = [...byMinute.entries()].sort(([a], [b]) => a - b);
+                    const sorted = [...buckets.entries()].sort(([a], [b]) => a - b);
                     const points = [];
                     for (let i = 0; i < sorted.length; i++) {
                         if (i > 0 && sorted[i][0] - sorted[i - 1][0] > GAP_MS) {
-                            points.push({ x: sorted[i - 1][0] + 60000, y: null });
+                            points.push({ x: sorted[i - 1][0] + BUCKET_MS, y: null });
                         }
                         points.push({ x: sorted[i][0], y: sorted[i][1] });
                     }
@@ -163,7 +169,7 @@
 
                 const datasets = HISTORY_SERIES.map(s => ({
                     label:           s.label,
-                    data:            buildPoints(s.key),
+                    data:            buildPoints(s.key, s.agg),
                     parsing:         false,
                     borderColor:     s.color,
                     backgroundColor: s.fill ? redGradient : 'transparent',
