@@ -27,6 +27,13 @@
             </div>
         </div>
 
+        <div class="chart-card">
+            <h2 class="chart-title">Players Online — Today</h2>
+            <div class="chart-wrap">
+                <canvas id="history-chart"></canvas>
+            </div>
+        </div>
+
         <div class="matches-container">
             <h2>Active Match Windows</h2>
             <div class="match-grid" id="match-grid">
@@ -39,8 +46,10 @@
         Refreshes every 30s.
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script>
-        const API_URL = 'https://analytics.wolvesgame.com/wolves-counter/stats';
+        const API_URL     = 'https://analytics.wolvesgame.com/wolves-counter/stats';
+        const HISTORY_URL = 'https://analytics.wolvesgame.com/wolves-counter/history';
 
         const MODE_NAMES = {
             deathmatch:       'Deathmatch',
@@ -52,6 +61,7 @@
 
         const MODE_ORDER = ['deathmatch', 'team_deathmatch', 'wave', 'wave_coop', 'other'];
 
+        // ── Live stats ────────────────────────────────────────────────────────
         async function updateStats() {
             const grid = document.getElementById('match-grid');
             try {
@@ -93,8 +103,112 @@
             }
         }
 
+        // ── History chart ─────────────────────────────────────────────────────
+        async function renderHistoryChart() {
+            try {
+                const response = await fetch(HISTORY_URL);
+                const { data, header } = await response.json();
+
+                const COL_ONLINE = header.indexOf('est_online');
+                const COL_TIME   = header.indexOf('timestamp');
+
+                // Bucket into 5-minute intervals, take max per bucket
+                const buckets = new Map();
+                for (const row of data) {
+                    const d = new Date(row[COL_TIME]);
+                    d.setMinutes(Math.floor(d.getMinutes() / 5) * 5, 0, 0);
+                    const key = d.getTime();
+                    const val = parseInt(row[COL_ONLINE], 10);
+                    buckets.set(key, Math.max(buckets.get(key) ?? 0, val));
+                }
+
+                const keys   = [...buckets.keys()].sort((a, b) => a - b);
+                const labels = keys.map(k => {
+                    const d = new Date(k);
+                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                });
+                const values = keys.map(k => buckets.get(k));
+
+                const canvas = document.getElementById('history-chart');
+                const ctx    = canvas.getContext('2d');
+
+                const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+                gradient.addColorStop(0, 'rgba(245, 39, 22, 0.35)');
+                gradient.addColorStop(1, 'rgba(245, 39, 22, 0)');
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Players Online',
+                            data: values,
+                            borderColor: '#f52716',
+                            backgroundColor: gradient,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#f52716',
+                            pointHoverBorderColor: '#fff',
+                            pointHoverBorderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1a1a1a',
+                                borderColor: '#333',
+                                borderWidth: 1,
+                                titleColor: '#555',
+                                titleFont: { family: 'Stratum2', weight: 'normal' },
+                                bodyColor: '#fff',
+                                bodyFont: { family: 'Stratum2', size: 14, weight: 'bold' },
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label: ctx => `${ctx.parsed.y} online`,
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                border: { color: '#222' },
+                                ticks: {
+                                    color: '#444',
+                                    font: { family: 'Stratum2', size: 11 },
+                                    maxTicksLimit: 10,
+                                    maxRotation: 0,
+                                },
+                            },
+                            y: {
+                                min: 0,
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                border: { color: '#222', dash: [4, 4] },
+                                ticks: {
+                                    color: '#444',
+                                    font: { family: 'Stratum2', size: 11 },
+                                    stepSize: 1,
+                                    precision: 0,
+                                },
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('History fetch failed:', error);
+            }
+        }
+
         updateStats();
         setInterval(updateStats, 30000);
+        renderHistoryChart();
     </script>
 </body>
 </html>
