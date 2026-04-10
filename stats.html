@@ -43,7 +43,11 @@
     </div>
 
     <footer>
-        Refreshes every 30s.
+        <div class="inner">
+            <p>MechAssault &copy; Microsoft Corporation. Wolves is created under Microsoft's <a target="_null"
+                href="http://www.xbox.com/en-us/developers/rules">Game Content Usage Rules</a> using assets
+                based on the MechAssault Universe. Wolves is not endorsed by or affiliated with Microsoft.</p>
+        </div>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -157,7 +161,7 @@
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: true,
+                        maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
                         plugins: {
                             legend: { display: false },
