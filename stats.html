@@ -51,6 +51,7 @@
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script>
         const API_URL     = 'https://analytics.wolvesgame.com/wolves-counter/stats';
         const HISTORY_URL = 'https://analytics.wolvesgame.com/wolves-counter/history';
@@ -113,41 +114,46 @@
                 const response = await fetch(HISTORY_URL);
                 const { data, header } = await response.json();
 
-                // Build a column index from the header enum
                 const col = {};
                 header.forEach((name, i) => col[name] = i);
 
-                // Bucket into 5-minute intervals, keep the last value per bucket
-                // (est_online is event-driven — last reading in window = current state)
-                const buckets = new Map();
+                // Deduplicate by minute — keep the last reading per minute.
+                // est_online is an absolute snapshot; duplicates within the same
+                // minute are rapid successive events, the final one is current state.
+                const byMinute = new Map();
                 for (const row of data) {
-                    const d = new Date(row[col.timestamp]);
-                    d.setMinutes(Math.floor(d.getMinutes() / 5) * 5, 0, 0);
-                    const key = d.getTime();
-                    buckets.set(key, parseInt(row[col.est_online], 10));
+                    const ts  = row[col.timestamp].replace(' ', 'T');
+                    const ms  = Math.floor(new Date(ts).getTime() / 60000) * 60000;
+                    byMinute.set(ms, parseInt(row[col.est_online], 10));
                 }
 
-                const keys   = [...buckets.keys()].sort((a, b) => a - b);
-                const labels = keys.map(k => {
-                    const d = new Date(k);
-                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                });
-                const values = keys.map(k => buckets.get(k));
+                const sorted = [...byMinute.entries()].sort(([a], [b]) => a - b);
+
+                // Insert null sentinels for gaps > 15 minutes so the chart
+                // shows honest breaks instead of diagonal lines across dead periods.
+                const GAP_MS = 15 * 60 * 1000;
+                const points = [];
+                for (let i = 0; i < sorted.length; i++) {
+                    if (i > 0 && sorted[i][0] - sorted[i - 1][0] > GAP_MS) {
+                        points.push({ x: sorted[i - 1][0] + 60000, y: null });
+                    }
+                    points.push({ x: sorted[i][0], y: sorted[i][1] });
+                }
 
                 const canvas = document.getElementById('history-chart');
                 const ctx    = canvas.getContext('2d');
 
-                const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-                gradient.addColorStop(0, 'rgba(245, 39, 22, 0.35)');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                gradient.addColorStop(0, 'rgba(245, 39, 22, 0.4)');
                 gradient.addColorStop(1, 'rgba(245, 39, 22, 0)');
 
                 new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels,
                         datasets: [{
                             label: 'Players Online',
-                            data: values,
+                            data: points,
+                            parsing: false,
                             borderColor: '#f52716',
                             backgroundColor: gradient,
                             borderWidth: 2,
@@ -157,7 +163,8 @@
                             pointHoverBorderColor: '#fff',
                             pointHoverBorderWidth: 2,
                             fill: true,
-                            tension: 0.4,
+                            tension: 0.3,
+                            spanGaps: false,
                         }]
                     },
                     options: {
@@ -170,37 +177,45 @@
                                 backgroundColor: '#1a1a1a',
                                 borderColor: '#333',
                                 borderWidth: 1,
-                                titleColor: '#555',
-                                titleFont: { family: 'Stratum2', weight: 'normal' },
+                                titleColor: '#666',
+                                titleFont: { family: 'Stratum2', size: 11 },
                                 bodyColor: '#fff',
                                 bodyFont: { family: 'Stratum2', size: 14, weight: 'bold' },
                                 padding: 12,
                                 displayColors: false,
                                 callbacks: {
-                                    label: ctx => `${ctx.parsed.y} online`,
+                                    title: items => {
+                                        const d = new Date(items[0].parsed.x);
+                                        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                    },
+                                    label: item => item.parsed.y !== null ? `${item.parsed.y} online` : '',
                                 }
                             }
                         },
                         scales: {
                             x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: { hour: 'HH:mm' },
+                                },
                                 grid: { color: 'rgba(255,255,255,0.04)' },
                                 border: { color: '#222' },
                                 ticks: {
                                     color: '#444',
                                     font: { family: 'Stratum2', size: 11 },
-                                    maxTicksLimit: 10,
                                     maxRotation: 0,
                                 },
                             },
                             y: {
                                 min: 0,
                                 grid: { color: 'rgba(255,255,255,0.04)' },
-                                border: { color: '#222', dash: [4, 4] },
+                                border: { color: '#222' },
                                 ticks: {
                                     color: '#444',
                                     font: { family: 'Stratum2', size: 11 },
-                                    stepSize: 1,
                                     precision: 0,
+                                    stepSize: 5,
                                 },
                             }
                         }
