@@ -113,17 +113,18 @@
                 const response = await fetch(HISTORY_URL);
                 const { data, header } = await response.json();
 
-                const COL_ONLINE = header.indexOf('est_online');
-                const COL_TIME   = header.indexOf('timestamp');
+                // Build a column index from the header enum
+                const col = {};
+                header.forEach((name, i) => col[name] = i);
 
-                // Bucket into 5-minute intervals, take max per bucket
+                // Bucket into 5-minute intervals, keep the last value per bucket
+                // (est_online is event-driven — last reading in window = current state)
                 const buckets = new Map();
                 for (const row of data) {
-                    const d = new Date(row[COL_TIME]);
+                    const d = new Date(row[col.timestamp]);
                     d.setMinutes(Math.floor(d.getMinutes() / 5) * 5, 0, 0);
                     const key = d.getTime();
-                    const val = parseInt(row[COL_ONLINE], 10);
-                    buckets.set(key, Math.max(buckets.get(key) ?? 0, val));
+                    buckets.set(key, parseInt(row[col.est_online], 10));
                 }
 
                 const keys   = [...buckets.keys()].sort((a, b) => a - b);
