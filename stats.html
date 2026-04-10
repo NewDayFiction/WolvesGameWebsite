@@ -136,7 +136,6 @@
                 // Multiple rows at the same minute are rapid successive events;
                 // the final value represents the state at the end of that minute.
                 const BUCKET_MS = 10 * 60 * 1000;
-                const GAP_MS    = 20 * 60 * 1000; // gap threshold: 2 buckets of silence
 
                 function buildPoints(key, agg) {
                     const buckets = new Map();
@@ -146,18 +145,12 @@
                         if (agg === 'sum') {
                             buckets.set(ms, (buckets.get(ms) ?? 0) + val);
                         } else {
-                            buckets.set(ms, val); // 'last': each row overwrites, final row wins
+                            buckets.set(ms, val);
                         }
                     }
-                    const sorted = [...buckets.entries()].sort(([a], [b]) => a - b);
-                    const points = [];
-                    for (let i = 0; i < sorted.length; i++) {
-                        if (i > 0 && sorted[i][0] - sorted[i - 1][0] > GAP_MS) {
-                            points.push({ x: sorted[i - 1][0] + BUCKET_MS, y: null });
-                        }
-                        points.push({ x: sorted[i][0], y: sorted[i][1] });
-                    }
-                    return points;
+                    return [...buckets.entries()]
+                        .sort(([a], [b]) => a - b)
+                        .map(([x, y]) => ({ x, y }));
                 }
 
                 const canvas = document.getElementById('history-chart');
@@ -179,7 +172,7 @@
                     pointHoverBackgroundColor: s.color,
                     fill:            s.fill,
                     tension:         0.3,
-                    spanGaps:        false,
+                    spanGaps:        true,
                 }));
 
                 new Chart(ctx, {
