@@ -42,6 +42,16 @@
     <script>
         const API_URL = 'https://analytics.wolvesgame.com/wolves-counter/stats';
 
+        const MODE_NAMES = {
+            deathmatch:       'Deathmatch',
+            team_deathmatch:  'Team Deathmatch',
+            wave:             'Grinder',
+            wave_coop:        'Grinder Co-op',
+            other:            'Other',
+        };
+
+        const MODE_ORDER = ['deathmatch', 'team_deathmatch', 'wave', 'wave_coop', 'other'];
+
         async function updateStats() {
             const grid = document.getElementById('match-grid');
             try {
@@ -52,19 +62,34 @@
                 document.getElementById('starts-10m').innerText = data.starts_last_10m;
 
                 grid.innerHTML = '';
-                for (const [mode, count] of Object.entries(data.matches_active_window)) {
+                const sorted = Object.entries(data.matches_active_window)
+                    .sort(([a], [b]) => {
+                        const ai = MODE_ORDER.indexOf(a);
+                        const bi = MODE_ORDER.indexOf(b);
+                        return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
+                    });
+                for (const [mode, count] of sorted) {
                     const card = document.createElement('div');
                     card.className = 'match-type-card';
-                    const formattedName = mode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    card.innerHTML = `
-                        <span class="match-name">${formattedName}</span>
-                        <span class="match-count">${count}</span>
-                    `;
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'match-name';
+                    nameSpan.textContent = MODE_NAMES[mode] ?? mode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                    const countSpan = document.createElement('span');
+                    countSpan.className = 'match-count';
+                    countSpan.textContent = count;
+
+                    card.appendChild(nameSpan);
+                    card.appendChild(countSpan);
                     grid.appendChild(card);
                 }
             } catch (error) {
-                console.error('Error fetching stats:', error);
-                grid.innerHTML = '<div style="color:#f52716">Failed to load live data.</div>';
+                console.error('Stats fetch failed:', error);
+                const msg = document.createElement('div');
+                msg.style.color = '#f52716';
+                msg.textContent = `Failed to load live data: ${error.message}`;
+                grid.replaceChildren(msg);
             }
         }
 
