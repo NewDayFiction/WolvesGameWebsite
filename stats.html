@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wolves | Live Stats</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="stats-page">
+
+    <a href="index.html" class="home-link">&#8592; Home</a>
+
+    <div class="container">
+        <header>
+            <h1>Wolves Live Stats</h1>
+        </header>
+
+        <div class="main-stats">
+            <div class="stat-card">
+                <div class="stat-label">Online Now</div>
+                <div class="stat-value" id="online-now">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Starts (Last 10m)</div>
+                <div class="stat-value" id="starts-10m">--</div>
+            </div>
+        </div>
+
+        <div class="matches-container">
+            <h2>Active Match Windows</h2>
+            <div class="match-grid" id="match-grid">
+                <div class="match-type-card"><span class="match-name">Loading...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Refreshes every 30s.
+    </footer>
+
+    <script>
+        const API_URL = 'https://analytics.wolvesgame.com/wolves-counter/stats';
+
+        async function updateStats() {
+            const grid = document.getElementById('match-grid');
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                document.getElementById('online-now').innerText = data.online_now;
+                document.getElementById('starts-10m').innerText = data.starts_last_10m;
+
+                grid.innerHTML = '';
+                for (const [mode, count] of Object.entries(data.matches_active_window)) {
+                    const card = document.createElement('div');
+                    card.className = 'match-type-card';
+                    const formattedName = mode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    card.innerHTML = `
+                        <span class="match-name">${formattedName}</span>
+                        <span class="match-count">${count}</span>
+                    `;
+                    grid.appendChild(card);
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                grid.innerHTML = '<div style="color:#f52716">Failed to load live data.</div>';
+            }
+        }
+
+        updateStats();
+        setInterval(updateStats, 30000);
+    </script>
+</body>
+</html>

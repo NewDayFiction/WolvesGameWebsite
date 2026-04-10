@@ -2,90 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Opening in itch.io app...</title>
-  
-  <meta http-equiv="refresh" content="0; url=itch://games/261058">
-  
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      text-align: center;
-      padding: 50px 20px;
-      background-color: #f4f4f4;
-      color: #333;
-    }
-    .container {
-      background: #ffffff;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    
-    /* Button Styling */
-    .button {
-      display: inline-block;
-      background-color: #fa5c5c; /* itch.io red */
-      color: white !important;
-      padding: 12px 24px;
-      margin: 10px 0;
-      border-radius: 6px;
-      text-decoration: none !important;
-      font-weight: bold;
-      transition: background 0.2s ease;
-      cursor: pointer;
-      border: none;
-      font-size: 16px;
-    }
-    .button:hover {
-      background-color: #e44b4b;
-    }
-    .button.secondary {
-      background-color: #434343;
-    }
-    .button.secondary:hover {
-      background-color: #2b2b2b;
-    }
+  <title>Download - Wolves</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    hr {
-      margin: 30px 0;
-      border: 0;
-      border-top: 1px solid #eeeeee;
-    }
-    ol {
-      text-align: left;
-      line-height: 1.8;
-      padding-left: 40px;
-    }
-  </style>
+  <meta http-equiv="refresh" content="0; url=itch://games/261058">
+
+  <link rel="stylesheet" href="../styles.css">
 </head>
-<body>
+<body class="download-page">
+
+  <a href="../index.html" class="home-link">&#8592; Home</a>
 
   <div class="container">
-    <h2>Opening in the itch.io app...</h2>
-    <p>If your browser prompts you, click <strong>"Open itch.io"</strong>.</p>
-    
-    <div style="margin-top: 20px;">
-      <p>If you do not wish to use the Itch launcher, you can download the game directly here:</p>
-      <a href="https://new-day-fiction.itch.io/wolves" class="button">View game on itch.io</a>
+    <h2>Download Wolves</h2>
+    <p>We recommend using the <strong style="color:#fff;">itch.io desktop app</strong> to download Wolves. It keeps the game up to date automatically — no need to re-download the full game every update.</p>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <div class="step-body">
+          <p>Download and install the itch.io desktop app.</p>
+          <a href="https://itch.io/app" target="_blank" class="button">Download the itch.io app</a>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <div class="step-body">
+          <p>Log into your itch.io account, then refresh this page to launch the download.</p>
+          <button onclick="location.reload();" class="button secondary">Refresh Page</button>
+        </div>
+      </div>
     </div>
 
     <hr>
 
-    <h3>Don't have the desktop app?</h3>
-    <p>The itch.io app allows you to receive Wolves updates as you would with a traditional launcher, otherwise you may have to download the full game every time there is an update.</p>
-    
-    <ol>
-      <li>
-        <a href="https://itch.io/app" target="_blank" class="button secondary">Download the itch.io app</a>
-      </li>
-      <li>Run the installer and log into your account.</li>
-      <li>
-        <strong>Refresh this page</strong> to download the game!<br>
-        <button onclick="location.reload();" class="button">Refresh Page</button>
-      </li>
-    </ol>
+    <p style="font-size:0.9rem;">Prefer not to use the app? <a href="https://new-day-fiction.itch.io/wolves" target="_blank">View Wolves on itch.io</a></p>
   </div>
 
 </body>
