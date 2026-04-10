@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wolves Game | Live Stats</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent-color: #38bdf8;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --success: #22c55e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.1) 0, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.05) 0, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #fff, var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.4); }
+            100% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+        }
+
+        /* Top Grid */
+        .main-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 16px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-color);
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-top: 0.5rem;
+        }
+
+        /* Matches Grid */
+        .matches-container {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .matches-container h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .match-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .match-type-card {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .match-name {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .match-count {
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        /* Loading state */
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="status-badge">
+                <div class="pulse"></div>
+                LIVE SYSTEM STATUS
+            </div>
+            <h1>Wolves Game Analytics</h1>
+        </header>
+
+        <div class="main-stats">
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-users"></i> Online Now
+                </div>
+                <div class="stat-value" id="online-now">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-bolt"></i> Starts (Last 10m)
+                </div>
+                <div class="stat-value" id="starts-10m">--</div>
+            </div>
+        </div>
+
+        <div class="matches-container">
+            <h2><i class="fas fa-gamepad"></i> Active Match Windows</h2>
+            <div class="match-grid" id="match-grid">
+                <div class="match-type-card"><span class="match-name">Loading...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Data source: analytics.wolvesgame.com • Refreshes every 30s
+    </footer>
+
+    <script>
+        const API_URL = 'https://analytics.wolvesgame.com/wolves-counter/stats';
+
+        async function updateStats() {
+            const grid = document.getElementById('match-grid');
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                // Update Overview
+                document.getElementById('online-now').innerText = data.online_now;
+                document.getElementById('starts-10m').innerText = data.starts_last_10m;
+
+                // Update Match Grid
+                grid.innerHTML = '';
+                for (const [mode, count] of Object.entries(data.matches_active_window)) {
+                    const card = document.createElement('div');
+                    card.className = 'match-type-card';
+                    
+                    // Format name (e.g. team_deathmatch -> Team Deathmatch)
+                    const formattedName = mode.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    
+                    card.innerHTML = `
+                        <span class="match-name">${formattedName}</span>
+                        <span class="match-count">${count}</span>
+                    `;
+                    grid.appendChild(card);
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                grid.innerHTML = '<div style="color: #ef4444">Failed to load live data.</div>';
+            }
+        }
+
+        // Initial fetch
+        updateStats();
+
+        // Refresh every 30 seconds
+        setInterval(updateStats, 30000);
+    </script>
+</body>
+</html>
