@@ -34,6 +34,13 @@
             </div>
         </div>
 
+        <div class="chart-card">
+            <h2 class="chart-title">Matches by Mode — Today</h2>
+            <div class="chart-wrap">
+                <canvas id="modes-chart"></canvas>
+            </div>
+        </div>
+
         <div class="matches-container">
             <h2>Active Match Windows</h2>
             <div class="match-grid" id="match-grid">
@@ -110,17 +117,18 @@
 
         // ── History chart ─────────────────────────────────────────────────────
 
-        // One entry per plottable column (all header fields except timestamp).
-        // fill:true only on est_online — it's the primary absolute metric.
-        // Match columns and app_starts are deltas/event counts — shown as lines only.
+        // Activity chart — players online only.
         const HISTORY_SERIES = [
-            { key: 'est_online',            label: 'Players Online',    color: '#f52716', width: 2,   fill: true,  agg: 'last' },
-            { key: 'app_starts',            label: 'App Starts',        color: '#ffffff', width: 1.5, fill: false, agg: 'sum'  },
-            { key: 'match_wave',            label: 'Grinder',           color: '#ff8c00', width: 1.5, fill: false, agg: 'sum'  },
-            { key: 'match_wave_coop',       label: 'Grinder Co-op',     color: '#ffd700', width: 1.5, fill: false, agg: 'sum'  },
-            { key: 'match_deathmatch',      label: 'Deathmatch',        color: '#42a5f5', width: 1.5, fill: false, agg: 'sum'  },
-            { key: 'match_team_deathmatch', label: 'Team Deathmatch',   color: '#ab47bc', width: 1.5, fill: false, agg: 'sum'  },
-            { key: 'match_other',           label: 'Other',             color: '#78909c', width: 1,   fill: false, agg: 'sum'  },
+            { key: 'est_online',  label: 'Players Online', color: '#f52716', width: 2,   fill: true,  agg: 'last' },
+        ];
+
+        // Stacked bar chart — one segment per game mode.
+        const MODE_SERIES = [
+            { key: 'match_deathmatch',      label: 'Deathmatch',      color: '#42a5f5' },
+            { key: 'match_team_deathmatch', label: 'Team Deathmatch', color: '#ab47bc' },
+            { key: 'match_wave',            label: 'Grinder',         color: '#ff8c00' },
+            { key: 'match_wave_coop',       label: 'Grinder Co-op',   color: '#ffd700' },
+            { key: 'match_other',           label: 'Other',           color: '#78909c' },
         ];
 
         async function renderHistoryChart() {
@@ -238,9 +246,116 @@
             }
         }
 
+        async function renderModesChart() {
+            try {
+                const response = await fetch(HISTORY_URL);
+                const { data, header } = await response.json();
+
+                const col = {};
+                header.forEach((name, i) => col[name] = i);
+
+                const BUCKET_MS = 10 * 60 * 1000;
+
+                // Build a sorted list of all bucket timestamps
+                const bucketSet = new Set();
+                for (const row of data) {
+                    const ms = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / BUCKET_MS) * BUCKET_MS;
+                    bucketSet.add(ms);
+                }
+                const labels = [...bucketSet].sort((a, b) => a - b);
+
+                // For each mode, accumulate sums per bucket
+                const datasets = MODE_SERIES.map(s => {
+                    const buckets = new Map();
+                    for (const row of data) {
+                        const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / BUCKET_MS) * BUCKET_MS;
+                        const val = parseInt(row[col[s.key]] ?? 0, 10) || 0;
+                        buckets.set(ms, (buckets.get(ms) ?? 0) + val);
+                    }
+                    return {
+                        label:           s.label,
+                        data:            labels.map(ms => buckets.get(ms) ?? 0),
+                        backgroundColor: s.color,
+                        borderColor:     'transparent',
+                        borderWidth:     0,
+                        borderRadius:    0,
+                        stack:           'modes',
+                    };
+                });
+
+                const canvas = document.getElementById('modes-chart');
+                const ctx    = canvas.getContext('2d');
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets,
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#666',
+                                    font: { family: 'Stratum2', size: 11 },
+                                    boxWidth: 12,
+                                    boxHeight: 12,
+                                    padding: 16,
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: '#1a1a1a',
+                                borderColor: '#333',
+                                borderWidth: 1,
+                                titleColor: '#666',
+                                titleFont: { family: 'Stratum2', size: 11 },
+                                bodyColor: '#fff',
+                                bodyFont: { family: 'Stratum2', size: 12 },
+                                padding: 12,
+                                callbacks: {
+                                    title: items => {
+                                        const d = new Date(items[0].parsed.x);
+                                        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                    },
+                                    label: item => {
+                                        if (!item.parsed.y) return null;
+                                        return ` ${item.dataset.label}: ${item.parsed.y}`;
+                                    },
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } },
+                                stacked: true,
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                border: { color: '#222' },
+                                ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, maxRotation: 0 },
+                            },
+                            y: {
+                                min: 0,
+                                stacked: true,
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                border: { color: '#222' },
+                                ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, precision: 0 },
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Modes chart fetch failed:', error);
+            }
+        }
+
         updateStats();
         setInterval(updateStats, 30000);
         renderHistoryChart();
+        renderModesChart();
     </script>
 </body>
 </html>
