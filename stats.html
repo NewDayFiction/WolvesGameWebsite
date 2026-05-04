@@ -194,9 +194,11 @@
             if (historyChart) historyChart.destroy();
 
             const buckets = new Map();
+            const onlineCol = currentRange === 'daily' ? col.peak_online : col.est_online;
+            
             for (const row of data) {
                 const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
-                const val = parseInt(row[col.est_online], 10);
+                const val = parseInt(row[onlineCol] ?? 0, 10);
                 buckets.set(ms, val);
             }
             const points = [...buckets.entries()]
