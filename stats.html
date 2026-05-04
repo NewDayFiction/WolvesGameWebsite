@@ -28,14 +28,23 @@
         </div>
 
         <div class="chart-card">
-            <h2 class="chart-title">Activity — Today</h2>
+            <div class="chart-header">
+                <h2 class="chart-title" id="activity-chart-title">Activity — Today</h2>
+                <div class="range-selector">
+                    <button class="range-btn active" onclick="setRange('live', this)">Live (6h)</button>
+                    <button class="range-btn" onclick="setRange('hourly', this)">Recent (60d)</button>
+                    <button class="range-btn" onclick="setRange('daily', this)">All Time</button>
+                </div>
+            </div>
             <div class="chart-wrap">
                 <canvas id="history-chart"></canvas>
             </div>
         </div>
 
         <div class="chart-card">
-            <h2 class="chart-title">Matches by Mode — Today</h2>
+            <div class="chart-header">
+                <h2 class="chart-title" id="modes-chart-title">Matches by Mode — Today</h2>
+            </div>
             <div class="chart-wrap">
                 <canvas id="modes-chart"></canvas>
             </div>
@@ -60,18 +69,29 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script>
-        const API_URL     = 'https://analytics.wolvesgame.com/wolves-counter/stats';
-        const HISTORY_URL = 'https://analytics.wolvesgame.com/wolves-counter/history';
+        const API_URL           = 'https://analytics.wolvesgame.com/wolves-counter/stats';
+        const HISTORY_LIVE_URL  = 'https://analytics.wolvesgame.com/wolves-counter/history';
+        const HISTORY_HOURLY_URL = 'https://analytics.wolvesgame.com/wolves-counter/history/hourly';
+        const HISTORY_DAILY_URL  = 'https://analytics.wolvesgame.com/wolves-counter/history/daily';
 
         const MODE_NAMES = {
-            deathmatch:       'Deathmatch',
-            team_deathmatch:  'Team Deathmatch',
-            wave:             'Grinder',
-            wave_coop:        'Grinder Co-op',
-            other:            'Other',
+            deathmatch:             'Deathmatch',
+            team_deathmatch:        'Team Deathmatch',
+            last_man_standing:      'LMS',
+            team_last_man_standing: 'Team LMS',
+            lance_destruction:      'Lance Destruction',
+            lance_last_man:         'Lance LMS',
+            mech_madness:           'Mech Madness',
+            wave:                   'Grinder',
+            wave_coop:              'Grinder Co-op',
+            other:                  'Other',
         };
 
-        const MODE_ORDER = ['deathmatch', 'team_deathmatch', 'wave', 'wave_coop', 'other'];
+        const MODE_ORDER = ['deathmatch', 'team_deathmatch', 'last_man_standing', 'team_last_man_standing', 'lance_destruction', 'lance_last_man', 'mech_madness', 'wave', 'wave_coop', 'other'];
+
+        let historyChart = null;
+        let modesChart   = null;
+        let currentRange = 'live';
 
         // ── Live stats ────────────────────────────────────────────────────────
         async function updateStats() {
@@ -115,247 +135,273 @@
             }
         }
 
-        // ── History chart ─────────────────────────────────────────────────────
+        // ── Range Selection ───────────────────────────────────────────────────
+        function setRange(range, btn) {
+            if (currentRange === range) return;
+            currentRange = range;
 
-        // Activity chart — players online only.
-        const HISTORY_SERIES = [
-            { key: 'est_online',  label: 'Players Online', color: '#f52716', width: 2,   fill: true,  agg: 'last' },
-        ];
+            // Update buttons
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
-        // Stacked bar chart — one segment per game mode.
-        const MODE_SERIES = [
-            { key: 'match_deathmatch',      label: 'Deathmatch',      color: '#42a5f5' },
-            { key: 'match_team_deathmatch', label: 'Team Deathmatch', color: '#ab47bc' },
-            { key: 'match_wave',            label: 'Grinder',         color: '#ff8c00' },
-            { key: 'match_wave_coop',       label: 'Grinder Co-op',   color: '#ffd700' },
-            { key: 'match_other',           label: 'Other',           color: '#78909c' },
-        ];
+            // Update titles
+            const titles = {
+                live:   'Today',
+                hourly: 'Last 60 Days',
+                daily:  'All Time'
+            };
+            document.getElementById('activity-chart-title').innerText = `Activity — ${titles[range]}`;
+            document.getElementById('modes-chart-title').innerText = `Matches by Mode — ${titles[range]}`;
 
-        async function renderHistoryChart() {
+            refreshCharts();
+        }
+
+        async function refreshCharts() {
+            let url = HISTORY_LIVE_URL;
+            let bucketMs = 10 * 60 * 1000; // 10 mins
+
+            if (currentRange === 'hourly') {
+                url = HISTORY_HOURLY_URL;
+                bucketMs = 60 * 60 * 1000; // 1 hour
+            } else if (currentRange === 'daily') {
+                url = HISTORY_DAILY_URL;
+                bucketMs = 24 * 60 * 60 * 1000; // 1 day
+            }
+
             try {
-                const response = await fetch(HISTORY_URL);
-                const { data, header } = await response.json();
-
-                // Build column index from header enum
-                const col = {};
-                header.forEach((name, i) => col[name] = i);
-
-                // Deduplicate by minute per series — keep last reading per minute.
-                // Multiple rows at the same minute are rapid successive events;
-                // the final value represents the state at the end of that minute.
-                const BUCKET_MS = 10 * 60 * 1000;
-
-                function buildPoints(key, agg) {
-                    const buckets = new Map();
-                    for (const row of data) {
-                        const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / BUCKET_MS) * BUCKET_MS;
-                        const val = parseInt(row[col[key]], 10);
-                        if (agg === 'sum') {
-                            buckets.set(ms, (buckets.get(ms) ?? 0) + val);
-                        } else {
-                            buckets.set(ms, val);
-                        }
-                    }
-                    return [...buckets.entries()]
-                        .sort(([a], [b]) => a - b)
-                        .map(([x, y]) => ({ x, y }));
-                }
-
-                const canvas = document.getElementById('history-chart');
-                const ctx    = canvas.getContext('2d');
-
-                const redGradient = ctx.createLinearGradient(0, 0, 0, 200);
-                redGradient.addColorStop(0, 'rgba(245, 39, 22, 0.35)');
-                redGradient.addColorStop(1, 'rgba(245, 39, 22, 0)');
-
-                const datasets = HISTORY_SERIES.map(s => ({
-                    label:           s.label,
-                    data:            buildPoints(s.key, s.agg),
-                    parsing:         false,
-                    borderColor:     s.color,
-                    backgroundColor: s.fill ? redGradient : 'transparent',
-                    borderWidth:     s.width,
-                    pointRadius:     0,
-                    pointHoverRadius: 4,
-                    pointHoverBackgroundColor: s.color,
-                    fill:            s.fill,
-                    tension:         0.3,
-                    spanGaps:        true,
-                }));
-
-                new Chart(ctx, {
-                    type: 'line',
-                    data: { datasets },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                labels: {
-                                    color: '#666',
-                                    font: { family: 'Stratum2', size: 11 },
-                                    boxWidth: 12,
-                                    boxHeight: 2,
-                                    padding: 16,
-                                    usePointStyle: true,
-                                    pointStyle: 'line',
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: '#1a1a1a',
-                                borderColor: '#333',
-                                borderWidth: 1,
-                                titleColor: '#666',
-                                titleFont: { family: 'Stratum2', size: 11 },
-                                bodyColor: '#fff',
-                                bodyFont: { family: 'Stratum2', size: 12 },
-                                padding: 12,
-                                callbacks: {
-                                    title: items => {
-                                        const d = new Date(items[0].parsed.x);
-                                        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                                    },
-                                    label: item => {
-                                        if (item.parsed.y === null || item.parsed.y === 0) return null;
-                                        return ` ${item.dataset.label}: ${item.parsed.y}`;
-                                    },
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } },
-                                grid: { color: 'rgba(255,255,255,0.04)' },
-                                border: { color: '#222' },
-                                ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, maxRotation: 0 },
-                            },
-                            y: {
-                                min: 0,
-                                grid: { color: 'rgba(255,255,255,0.04)' },
-                                border: { color: '#222' },
-                                ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, precision: 0, stepSize: 5 },
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('History fetch failed:', error);
+                const response = await fetch(url);
+                const json = await response.json();
+                renderCharts(json, bucketMs);
+            } catch (e) {
+                console.error('Failed to refresh charts:', e);
             }
         }
 
-        async function renderModesChart() {
-            try {
-                const response = await fetch(HISTORY_URL);
-                const { data, header } = await response.json();
+        // ── Chart Rendering ───────────────────────────────────────────────────
 
-                const col = {};
-                header.forEach((name, i) => col[name] = i);
+        function renderCharts({ data, header }, bucketMs) {
+            const col = {};
+            header.forEach((name, i) => col[name] = i);
 
-                const BUCKET_MS = 10 * 60 * 1000;
+            renderHistoryChart(data, col, bucketMs);
+            renderModesChart(data, col, bucketMs);
+        }
 
-                // Build a sorted list of all bucket timestamps
-                const bucketSet = new Set();
-                for (const row of data) {
-                    const ms = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / BUCKET_MS) * BUCKET_MS;
-                    bucketSet.add(ms);
-                }
-                const labels = [...bucketSet].sort((a, b) => a - b);
+        function renderHistoryChart(data, col, bucketMs) {
+            const canvas = document.getElementById('history-chart');
+            const ctx    = canvas.getContext('2d');
 
-                // For each mode, accumulate sums per bucket
-                const datasets = MODE_SERIES.map(s => {
-                    const buckets = new Map();
-                    for (const row of data) {
-                        const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / BUCKET_MS) * BUCKET_MS;
-                        const val = parseInt(row[col[s.key]] ?? 0, 10) || 0;
-                        buckets.set(ms, (buckets.get(ms) ?? 0) + val);
-                    }
-                    return {
-                        label:           s.label,
-                        data:            labels.map(ms => buckets.get(ms) ?? 0),
-                        backgroundColor: s.color,
-                        borderColor:     'transparent',
-                        borderWidth:     0,
-                        borderRadius:    0,
-                        stack:           'modes',
-                    };
-                });
+            if (historyChart) historyChart.destroy();
 
-                const canvas = document.getElementById('modes-chart');
-                const ctx    = canvas.getContext('2d');
+            const buckets = new Map();
+            for (const row of data) {
+                const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
+                const val = parseInt(row[col.est_online], 10);
+                buckets.set(ms, val);
+            }
+            const points = [...buckets.entries()]
+                .sort(([a], [b]) => a - b)
+                .map(([x, y]) => ({ x, y }));
 
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels,
-                        datasets,
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                labels: {
-                                    color: '#666',
-                                    font: { family: 'Stratum2', size: 11 },
-                                    boxWidth: 12,
-                                    boxHeight: 12,
-                                    padding: 16,
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: '#1a1a1a',
-                                borderColor: '#333',
-                                borderWidth: 1,
-                                titleColor: '#666',
-                                titleFont: { family: 'Stratum2', size: 11 },
-                                bodyColor: '#fff',
-                                bodyFont: { family: 'Stratum2', size: 12 },
-                                padding: 12,
-                                callbacks: {
-                                    title: items => {
-                                        const d = new Date(items[0].parsed.x);
-                                        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                                    },
-                                    label: item => {
-                                        if (!item.parsed.y) return null;
-                                        return ` ${item.dataset.label}: ${item.parsed.y}`;
-                                    },
-                                }
+            const redGradient = ctx.createLinearGradient(0, 0, 0, 200);
+            redGradient.addColorStop(0, 'rgba(245, 39, 22, 0.35)');
+            redGradient.addColorStop(1, 'rgba(245, 39, 22, 0)');
+
+            historyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label:           'Players Online',
+                        data:            points,
+                        parsing:         false,
+                        borderColor:     '#f52716',
+                        backgroundColor: redGradient,
+                        borderWidth:     2,
+                        pointRadius:     0,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: '#f52716',
+                        fill:            true,
+                        tension:         0.3,
+                        spanGaps:        true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#666',
+                                font: { family: 'Stratum2', size: 11 },
+                                boxWidth: 12,
+                                boxHeight: 2,
+                                padding: 16,
+                                usePointStyle: true,
+                                pointStyle: 'line',
                             }
                         },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: { unit: 'hour', displayFormats: { hour: 'HH:mm' } },
-                                stacked: true,
-                                grid: { color: 'rgba(255,255,255,0.04)' },
-                                border: { color: '#222' },
-                                ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, maxRotation: 0 },
-                            },
-                            y: {
-                                min: 0,
-                                stacked: true,
-                                grid: { color: 'rgba(255,255,255,0.04)' },
-                                border: { color: '#222' },
-                                ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, precision: 0 },
+                        tooltip: {
+                            backgroundColor: '#1a1a1a',
+                            borderColor: '#333',
+                            borderWidth: 1,
+                            titleColor: '#666',
+                            titleFont: { family: 'Stratum2', size: 11 },
+                            bodyColor: '#fff',
+                            bodyFont: { family: 'Stratum2', size: 12 },
+                            padding: 12,
+                            callbacks: {
+                                title: items => {
+                                    const d = new Date(items[0].parsed.x);
+                                    if (currentRange === 'daily') return d.toLocaleDateString();
+                                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                },
+                                label: item => {
+                                    if (item.parsed.y === null || item.parsed.y === 0) return null;
+                                    return ` ${item.dataset.label}: ${item.parsed.y}`;
+                                },
                             }
                         }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: currentRange === 'live' ? 'hour' : (currentRange === 'hourly' ? 'day' : 'month'),
+                                displayFormats: { hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' }
+                            },
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            border: { color: '#222' },
+                            ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, maxRotation: 0 },
+                        },
+                        y: {
+                            min: 0,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            border: { color: '#222' },
+                            ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, precision: 0, stepSize: 5 },
+                        }
                     }
-                });
-            } catch (error) {
-                console.error('Modes chart fetch failed:', error);
+                }
+            });
+        }
+
+        function renderModesChart(data, col, bucketMs) {
+            const canvas = document.getElementById('modes-chart');
+            const ctx    = canvas.getContext('2d');
+
+            if (modesChart) modesChart.destroy();
+
+            // Dynamic detection of match types from headers
+            const matchKeys = Object.keys(col).filter(k => k.startsWith('match_'));
+
+            // Build a sorted list of all bucket timestamps
+            const bucketSet = new Set();
+            for (const row of data) {
+                const ms = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
+                bucketSet.add(ms);
             }
+            const labels = [...bucketSet].sort((a, b) => a - b);
+
+            const colors = {
+                deathmatch:             '#42a5f5',
+                team_deathmatch:        '#ab47bc',
+                last_man_standing:      '#ff7043',
+                team_last_man_standing: '#d84315',
+                lance_destruction:      '#26a69a',
+                lance_last_man:         '#00897b',
+                mech_madness:           '#ef5350',
+                wave:                   '#ff8c00',
+                wave_coop:              '#ffd700',
+                other:                  '#78909c',
+            };
+
+            const datasets = matchKeys.map(key => {
+                const modeId = key.replace('match_', '');
+                const buckets = new Map();
+                for (const row of data) {
+                    const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
+                    const val = parseInt(row[col[key]] ?? 0, 10) || 0;
+                    buckets.set(ms, (buckets.get(ms) ?? 0) + val);
+                }
+                return {
+                    label:           MODE_NAMES[modeId] ?? modeId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    data:            labels.map(ms => buckets.get(ms) ?? 0),
+                    backgroundColor: colors[modeId] ?? '#444',
+                    borderColor:     'transparent',
+                    borderWidth:     0,
+                    borderRadius:    0,
+                    stack:           'modes',
+                };
+            });
+
+            modesChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#666',
+                                font: { family: 'Stratum2', size: 11 },
+                                boxWidth: 12,
+                                boxHeight: 12,
+                                padding: 16,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1a1a1a',
+                            borderColor: '#333',
+                            borderWidth: 1,
+                            titleColor: '#666',
+                            titleFont: { family: 'Stratum2', size: 11 },
+                            bodyColor: '#fff',
+                            bodyFont: { family: 'Stratum2', size: 12 },
+                            padding: 12,
+                            callbacks: {
+                                title: items => {
+                                    const d = new Date(items[0].parsed.x);
+                                    if (currentRange === 'daily') return d.toLocaleDateString();
+                                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                },
+                                label: item => {
+                                    if (!item.parsed.y) return null;
+                                    return ` ${item.dataset.label}: ${item.parsed.y}`;
+                                },
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: currentRange === 'live' ? 'hour' : (currentRange === 'hourly' ? 'day' : 'month'),
+                                displayFormats: { hour: 'HH:mm', day: 'MMM d', month: 'MMM yyyy' }
+                            },
+                            stacked: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            border: { color: '#222' },
+                            ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, maxRotation: 0 },
+                        },
+                        y: {
+                            min: 0,
+                            stacked: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            border: { color: '#222' },
+                            ticks: { color: '#444', font: { family: 'Stratum2', size: 11 }, precision: 0 },
+                        }
+                    }
+                }
+            });
         }
 
         updateStats();
         setInterval(updateStats, 30000);
-        renderHistoryChart();
-        renderModesChart();
+        refreshCharts();
     </script>
 </body>
 </html>
