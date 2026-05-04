@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body class="stats-page">
 
     <a href="index.html" class="home-link">&#8592; Home</a>
@@ -61,36 +63,37 @@
     <footer>
         <div class="inner">
             <p>MechAssault &copy; Microsoft Corporation. Wolves is created under Microsoft's <a target="_null"
-                href="http://www.xbox.com/en-us/developers/rules">Game Content Usage Rules</a> using assets
+                    href="http://www.xbox.com/en-us/developers/rules">Game Content Usage Rules</a> using assets
                 based on the MechAssault Universe. Wolves is not endorsed by or affiliated with Microsoft.</p>
         </div>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script>
-        const API_URL           = 'https://analytics.wolvesgame.com/wolves-counter/stats';
-        const HISTORY_LIVE_URL  = 'https://analytics.wolvesgame.com/wolves-counter/history';
+        const API_URL = 'https://analytics.wolvesgame.com/wolves-counter/stats';
+        const HISTORY_LIVE_URL = 'https://analytics.wolvesgame.com/wolves-counter/history';
         const HISTORY_HOURLY_URL = 'https://analytics.wolvesgame.com/wolves-counter/history/hourly';
-        const HISTORY_DAILY_URL  = 'https://analytics.wolvesgame.com/wolves-counter/history/daily';
+        const HISTORY_DAILY_URL = 'https://analytics.wolvesgame.com/wolves-counter/history/daily';
 
         const MODE_NAMES = {
-            deathmatch:             'Deathmatch',
-            team_deathmatch:        'Team Deathmatch',
-            last_man_standing:      'LMS',
+            deathmatch: 'Deathmatch',
+            team_deathmatch: 'Team Deathmatch',
+            last_man_standing: 'LMS',
             team_last_man_standing: 'Team LMS',
-            lance_destruction:      'Lance Destruction',
-            lance_last_man:         'Lance LMS',
-            mech_madness:           'Mech Madness',
-            wave:                   'Grinder',
-            wave_coop:              'Grinder Co-op',
-            other:                  'Other',
+            lance_destruction: 'Lance Destruction',
+            lance_last_man: 'Lance LMS',
+            mech_madness: 'Mech Madness',
+            wave: 'Grinder',
+            wave_coop: 'Grinder Co-op',
+            other: 'Other',
         };
 
         const MODE_ORDER = ['deathmatch', 'team_deathmatch', 'last_man_standing', 'team_last_man_standing', 'lance_destruction', 'lance_last_man', 'mech_madness', 'wave', 'wave_coop', 'other'];
 
         let historyChart = null;
-        let modesChart   = null;
+        let modesChart = null;
         let currentRange = 'live';
 
         // ── Live stats ────────────────────────────────────────────────────────
@@ -146,9 +149,9 @@
 
             // Update titles
             const titles = {
-                live:   'Today',
+                live: 'Today',
                 hourly: 'Last 60 Days',
-                daily:  'All Time'
+                daily: 'All Time'
             };
             document.getElementById('activity-chart-title').innerText = `Activity — ${titles[range]}`;
             document.getElementById('modes-chart-title').innerText = `Matches by Mode — ${titles[range]}`;
@@ -189,15 +192,15 @@
 
         function renderHistoryChart(data, col, bucketMs) {
             const canvas = document.getElementById('history-chart');
-            const ctx    = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d');
 
             if (historyChart) historyChart.destroy();
 
             const buckets = new Map();
-            const onlineCol = currentRange === 'daily' ? col.peak_online : col.est_online;
-            
+            const onlineCol = (currentRange === 'hourly' || currentRange === 'daily') ? col.peak_online : col.est_online;
+
             for (const row of data) {
-                const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
+                const ms = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
                 const val = parseInt(row[onlineCol] ?? 0, 10);
                 buckets.set(ms, val);
             }
@@ -213,18 +216,18 @@
                 type: 'line',
                 data: {
                     datasets: [{
-                        label:           'Players Online',
-                        data:            points,
-                        parsing:         false,
-                        borderColor:     '#f52716',
+                        label: 'Players Online',
+                        data: points,
+                        parsing: false,
+                        borderColor: '#f52716',
                         backgroundColor: redGradient,
-                        borderWidth:     2,
-                        pointRadius:     0,
+                        borderWidth: 2,
+                        pointRadius: 0,
                         pointHoverRadius: 4,
                         pointHoverBackgroundColor: '#f52716',
-                        fill:            true,
-                        tension:         0.3,
-                        spanGaps:        true,
+                        fill: true,
+                        tension: 0.3,
+                        spanGaps: true,
                     }]
                 },
                 options: {
@@ -257,7 +260,7 @@
                                 title: items => {
                                     const d = new Date(items[0].parsed.x);
                                     if (currentRange === 'daily') return d.toLocaleDateString();
-                                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                                 },
                                 label: item => {
                                     if (item.parsed.y === null || item.parsed.y === 0) return null;
@@ -290,7 +293,7 @@
 
         function renderModesChart(data, col, bucketMs) {
             const canvas = document.getElementById('modes-chart');
-            const ctx    = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d');
 
             if (modesChart) modesChart.destroy();
 
@@ -306,34 +309,34 @@
             const labels = [...bucketSet].sort((a, b) => a - b);
 
             const colors = {
-                deathmatch:             '#42a5f5',
-                team_deathmatch:        '#ab47bc',
-                last_man_standing:      '#ff7043',
+                deathmatch: '#42a5f5',
+                team_deathmatch: '#ab47bc',
+                last_man_standing: '#ff7043',
                 team_last_man_standing: '#d84315',
-                lance_destruction:      '#26a69a',
-                lance_last_man:         '#00897b',
-                mech_madness:           '#ef5350',
-                wave:                   '#ff8c00',
-                wave_coop:              '#ffd700',
-                other:                  '#78909c',
+                lance_destruction: '#26a69a',
+                lance_last_man: '#00897b',
+                mech_madness: '#ef5350',
+                wave: '#ff8c00',
+                wave_coop: '#ffd700',
+                other: '#78909c',
             };
 
             const datasets = matchKeys.map(key => {
                 const modeId = key.replace('match_', '');
                 const buckets = new Map();
                 for (const row of data) {
-                    const ms  = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
+                    const ms = Math.floor(new Date(row[col.timestamp].replace(' ', 'T')).getTime() / bucketMs) * bucketMs;
                     const val = parseInt(row[col[key]] ?? 0, 10) || 0;
                     buckets.set(ms, (buckets.get(ms) ?? 0) + val);
                 }
                 return {
-                    label:           MODE_NAMES[modeId] ?? modeId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                    data:            labels.map(ms => buckets.get(ms) ?? 0),
+                    label: MODE_NAMES[modeId] ?? modeId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    data: labels.map(ms => buckets.get(ms) ?? 0),
                     backgroundColor: colors[modeId] ?? '#444',
-                    borderColor:     'transparent',
-                    borderWidth:     0,
-                    borderRadius:    0,
-                    stack:           'modes',
+                    borderColor: 'transparent',
+                    borderWidth: 0,
+                    borderRadius: 0,
+                    stack: 'modes',
                 };
             });
 
@@ -368,7 +371,7 @@
                                 title: items => {
                                     const d = new Date(items[0].parsed.x);
                                     if (currentRange === 'daily') return d.toLocaleDateString();
-                                    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                                 },
                                 label: item => {
                                     if (!item.parsed.y) return null;
@@ -406,4 +409,5 @@
         refreshCharts();
     </script>
 </body>
+
 </html>
