@@ -95,6 +95,7 @@
         let historyChart = null;
         let modesChart = null;
         let currentRange = 'live';
+        const historyCache = new Map();
 
         // ── Live stats ────────────────────────────────────────────────────────
         async function updateStats() {
@@ -171,9 +172,19 @@
                 bucketMs = 24 * 60 * 60 * 1000; // 1 day
             }
 
+            if (historyCache.has(currentRange)) {
+                renderCharts(historyCache.get(currentRange), bucketMs);
+                return;
+            }
+
             try {
                 const response = await fetch(url);
                 const json = await response.json();
+
+                if (currentRange !== 'live') {
+                    historyCache.set(currentRange, json);
+                }
+
                 renderCharts(json, bucketMs);
             } catch (e) {
                 console.error('Failed to refresh charts:', e);
