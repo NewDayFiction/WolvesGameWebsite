@@ -39,25 +39,32 @@
 
 <body>
     <div class="hero">
-        <div class="inner">
-            <!-- Glassmorphism panel enclosing logo, title subtitle, and link actions over background video -->
-            <div class="hero-panel">
-                <div class="logo"></div>
-                <h2>Wave 3 Available Now!</h2>
-                <div class="social">
-                    <div class="social-group primary">
-                        <a class="big download" target="_self" href="Download/index.html">Download</a>
-                        <a class="big" target="_null" href="stats.html">Live Stats</a>
+        <div class="inner hero-boxed-video-inner">
+            <div class="hero-layout-side-by-side">
+                <!-- Glassmorphism panel enclosing logo, title subtitle, and link actions -->
+                <div class="hero-panel">
+                    <div class="logo"></div>
+                    <h2>Wave 3 Available Now!</h2>
+                    <div class="social">
+                        <div class="social-group primary">
+                            <a class="big download" target="_self" href="Download/index.html">Download</a>
+                            <a class="big" target="_null" href="stats.html">Live Stats</a>
+                        </div>
+                        <div class="social-group secondary">
+                            <a target="_null" href="https://discord.gg/cb8frFg">Discord</a>
+                            <a target="_null" href="https://twitter.com/Wolves_Game">Twitter</a>
+                            <a target="_null" href="https://youtube.com/channel/UCuYQXYPBlpe0lqcprSCWaCg">YouTube</a>
+                            <a target="_null" href="https://www.instagram.com/newdayfiction">Instagram</a>
+                            <a target="_null" href="https://www.tiktok.com/@new.day.fiction">TikTok</a>
+                            <a target="_null" href="https://reddit.com/r/WolvesGame">Reddit</a>
+                            <a target="_null" href="http://indiedb.com/games/wolves">IndieDB</a>
+                        </div>
                     </div>
-                    <div class="social-group secondary">
-                        <a target="_null" href="https://discord.gg/cb8frFg">Discord</a>
-                        <a target="_null" href="https://twitter.com/Wolves_Game">Twitter</a>
-                        <a target="_null" href="https://youtube.com/channel/UCuYQXYPBlpe0lqcprSCWaCg">YouTube</a>
-                        <a target="_null" href="https://www.instagram.com/newdayfiction">Instagram</a>
-                        <a target="_null" href="https://www.tiktok.com/@new.day.fiction">TikTok</a>
-                        <a target="_null" href="https://reddit.com/r/WolvesGame">Reddit</a>
-                        <a target="_null" href="http://indiedb.com/games/wolves">IndieDB</a>
-                    </div>
+                </div>
+
+                <!-- Video in a box on the right -->
+                <div class="video-box-container">
+                    <div id="myvideo"></div>
                 </div>
             </div>
         </div>
@@ -68,11 +75,7 @@
                     based on the MechAssault Universe. Wolves is not endorsed by or affiliated with Microsoft.</p>
             </div>
         </div>
-        <div class="video-background">
-            <div class="video-foreground">
-                <div id="myvideo"></div>
-            </div>
-        </div>
+        <div class="hero-variant-bg"></div>
     </div>
 </body>
 
@@ -83,9 +86,9 @@
 
     var player,
         playerConfig = {
-            height: '250',
+            height: '100%',
             width: '100%',
-            videoId: "kdMoN4jQSzU",
+            videoId: "9tIcuu0s22Y",
             playerVars: {
                 autoplay: 1,
                 controls: 0,
@@ -97,7 +100,7 @@
                 start: start,
                 end: end,
                 autohide: 0,
-                origin: 'https://wolvesgame.com',
+                origin: window.location.origin,
             },
             events: {
                 onStateChange: onStateChange,

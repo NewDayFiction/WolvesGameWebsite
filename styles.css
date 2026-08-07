@@ -304,6 +304,66 @@ a {
     }
 }
 
+/* Side-by-side layout with Boxed Video on the Right */
+.inner.hero-boxed-video-inner {
+    max-width: 1800px;
+    width: 95%;
+    padding: 0 2rem;
+}
+
+.hero-layout-side-by-side {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3rem;
+    width: 100%;
+}
+
+.video-box-container {
+    flex: 2;
+    width: 100%;
+    max-width: 1100px;
+    aspect-ratio: 16 / 9;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 39, 22, 0.25);
+    background: #000;
+    position: relative;
+}
+
+.video-box-container iframe,
+.video-box-container #myvideo {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: none;
+}
+
+.hero-variant-bg {
+    position: fixed;
+    inset: 0;
+    background-image: url(img/madcat.jpg);
+    background-size: cover;
+    background-position: center;
+    filter: blur(8px) brightness(0.25);
+    z-index: -99;
+}
+
+@media (max-width: 960px) {
+    .hero-layout-side-by-side {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .video-box-container {
+        max-width: 100%;
+    }
+}
+
 /* Stats page */
 .stats-page {
     min-height: 100vh;
