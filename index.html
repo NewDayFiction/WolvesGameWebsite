@@ -81,9 +81,6 @@
 
 <script async src="https://www.youtube.com/iframe_api"></script>
 <script>
-    let start = 1;
-    let end = 117;
-
     var player,
         playerConfig = {
             height: '100%',
@@ -91,14 +88,14 @@
             videoId: "9tIcuu0s22Y",
             playerVars: {
                 autoplay: 1,
-                controls: 0,
+                controls: 1,
                 showinfo: 0,
                 modestbranding: 1,
                 fs: 1,
                 cc_load_policy: 0,
                 iv_load_policy: 3,
-                start: start,
-                end: end,
+                loop: 1,
+                playlist: "9tIcuu0s22Y",
                 autohide: 0,
                 origin: window.location.origin,
             },
@@ -114,7 +111,7 @@
     }
     function onStateChange(state) {
         if (state.data === YT.PlayerState.ENDED) {
-            player.seekTo(start);
+            player.playVideo();
         }
     }
 </script>

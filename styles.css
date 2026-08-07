@@ -341,6 +341,7 @@ a {
     top: 0;
     left: 0;
     border: none;
+    pointer-events: auto;
 }
 
 .hero-variant-bg {
